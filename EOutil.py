@@ -2,7 +2,7 @@ import numpy as np
 from skimage import io
 import rasterio as rio
 from glob import glob
-from tqdm import tqdm_notebook as tqdm
+from tqdm import tqdm
 from sklearn.metrics import confusion_matrix
 import random
 import itertools
@@ -226,6 +226,7 @@ class EOtorch:
             self.all_files, self.label_files = src_gts_list(self.DATA_FOLDER, self.LABEL_FOLDER)
         elif self.DATASET == 'Landsat_meilan':
             self.all_files, self.label_files = src_gts_list(self.DATA_FOLDER, self.LABEL_FOLDER)
+            print(self.all_files, self.label_files)
             self.data_scale=10000
             if self.im_max is None:
                 self.im_max=10000*np.ones(self.IN_CHANNELS)
@@ -534,19 +535,18 @@ class EOtorch:
 
     def _predict_work(self,test_files,window_size=WINDOW_SIZE):
         batch_size = self.BATCH_SIZE
-        net=self.net
+        net = self.net
         # stride = WINDOW_SIZE[0]
         stride = self.STRIDE
         # test_images = (1 / self.data_scale * np.asarray(rio.open(file).read().transpose([1,2,0]), dtype='float32') for file in test_files)
-        test_images = (self.rescale(rio.open(file).read()).transpose([1,2,0]) for file in test_files)
+        test_images = (self.rescale(rio.open(file).read()).transpose([1, 2, 0]) for file in test_files)
         # Switch the network to inference mode
         net.eval()
-        for img,src_f in tqdm(zip(test_images,test_files), total=len(test_files), leave=False):
+        for img, src_f in tqdm(zip(test_images, test_files), total=len(test_files)):
             pred = np.zeros(img.shape[:2] + (self.N_CLASSES,))
             total = count_sliding_window(img, step=stride, window_size=window_size) // batch_size
             for i, coords in enumerate(
-                    tqdm(grouper(batch_size, sliding_window(img, step=stride, window_size=window_size)), total=total,
-                         leave=False)):
+                    tqdm(grouper(batch_size, sliding_window(img, step=stride, window_size=window_size)), total=total)):
                 # Display in progress results
                 #             if i > 0 and total > 10 and i % int(10 * total / 100) == 0:
                 #                     _pred = np.argmax(pred, axis=-1)
@@ -573,7 +573,7 @@ class EOtorch:
                     pred[x:x + w, y:y + h] += out
                 del (outs)
             pred = np.argmax(pred, axis=-1)
-            save_pred(src_f, convert_to_color(pred,self.palette) ,self.result_dir)
+            save_pred(src_f, convert_to_color(pred, self.palette), self.result_dir)
             # all_preds.append(pred)
         # if all:
         #     return all_preds  # , all_gts
@@ -715,20 +715,22 @@ class EO_Dataset(torch.utils.data.Dataset):
 
 
 def src_gts_list(src_folder, label_folder):
+    print('src_dir: '+src_folder, 'label_dir: '+label_folder)
+    print(path.exists(src_folder), path.exists(label_folder))
     # srclist=glob(os.path.join(src_folder,'*.tif'))
-    labellist=glob(os.path.join(label_folder,'*.tif'))
+    labellist = glob(os.path.join(label_folder, '*.tif'))
     # labellist=[os.path.join(label_folder,os.path.split(i)[-1].replace('src','label')) for i in srclist]
-    srclist=[os.path.join(src_folder,os.path.split(i)[-1].replace('label','src')) for i in labellist]
-    return srclist,labellist
+    srclist=[os.path.join(src_folder, os.path.split(i)[-1].replace('label','src')) for i in labellist]
+    return srclist, labellist
 
 
-def save_pred(src_f,pred_array,pred_dir=r'.\refine_work\predict'):
+def save_pred(src_f, pred_array, pred_dir=r'.\refine_work\predict'):
     src = rio.open(src_f)
     profile = src.profile
-    profile['dtype']='uint8'
-    profile['count']=3
-    pred_array=np.asarray(pred_array,dtype='uint8')
-    PRED_fname=path.join(pred_dir,'pred_'+path.split(src_f)[-1])
+    profile['dtype'] = 'uint8'
+    profile['count'] = 3
+    pred_array = np.asarray(pred_array, dtype='uint8')
+    PRED_fname = path.join(pred_dir,'pred_'+path.split(src_f)[-1])
     with rio.open(PRED_fname, 'w', **profile) as dst:
         dst.write(pred_array)
 
