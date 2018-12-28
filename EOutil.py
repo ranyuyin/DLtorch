@@ -48,7 +48,7 @@ class EOtorch:
     data_scale=255
 
     def __init__(self,channels,LABELS,resume=None,weight=None,array_parse=None):
-        self.IN_CHANNELS=channels
+        self.IN_CHANNELS = channels
         self.LABELS = LABELS  # Label names
         self.N_CLASSES = len(self.LABELS)  # Number of classes
         self.net = SegNet(in_channels=self.IN_CHANNELS, out_channels=self.N_CLASSES)
@@ -58,8 +58,8 @@ class EOtorch:
             self.WEIGHTS = torch.Tensor(weight)
         else:
             self.WEIGHTS = torch.ones(self.N_CLASSES)  # Weights for class balancing
-        self.im_min=np.zeros(channels)
-        self.array_parse=array_parse
+        self.im_min = np.zeros(channels)
+        self.array_parse = array_parse
 
 
     def test(self,test_files, label_files, all=False, stride=WINDOW_SIZE[0], batch_size=BATCH_SIZE, window_size=WINDOW_SIZE):
@@ -675,9 +675,9 @@ class EO_Dataset(torch.utils.data.Dataset):
         #         label_p = label[x1:x2,y1:y2].astytpe('int64')
         data_p, label_p = self.get_random_sample(data, label, self.WINDOW_SIZE)
         if self.fillmarker is not None:
-            label_p[label_p==self.fillmarker['marker']] = self.fillmarker['fill']
-        if self.array_parse!=None:
-            data_p=self.array_parse(data_p)
+            label_p[label_p == self.fillmarker['marker']] = self.fillmarker['fill']
+        if self.array_parse is not None:
+            data_p = self.array_parse(data_p)
         # Data augmentation
         data_p, label_p = self.data_augmentation(data_p, label_p)
 
@@ -692,6 +692,7 @@ class EO_Dataset(torch.utils.data.Dataset):
             skip=False
             x1, x2, y1, y2 = get_random_pos(data, self.WINDOW_SIZE)
             data_p = data[:, x1:x2, y1:y2]
+            # skip patch with 0 more than 40% in raw data
             if np.count_nonzero(data_p[0, :, :] == 0) > pixels * 0.4:
                 continue
             label_p = np.asarray(label[x1:x2, y1:y2], 'int64')
